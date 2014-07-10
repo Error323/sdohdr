@@ -66,11 +66,10 @@ int main(int argc, char *argv[])
   }
 
   packet_t packet;
+  char *ptr = reinterpret_cast<char*>(&packet);
 
   if (use_stdin)
   {
-    packet_t packet;
-    char *ptr = reinterpret_cast<char*>(&packet);
     std::vector<packet_t> buffer;
     double start_time = timer::GetRealTime(), duration = 0.0;
     int invalid = 0;
@@ -117,7 +116,7 @@ int main(int argc, char *argv[])
     int i = 0;
     while (!file.eof() && i < n)
     {
-      file.read(reinterpret_cast<char*>(&packet), sizeof(packet));
+      file.read(ptr, sizeof(packet));
       if (!is_valid(packet.header))
         cerr << "Invalid header for id " << i << endl;
       else
