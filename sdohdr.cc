@@ -3,7 +3,11 @@
 #include <limits>
 #include <vector>
 #include <string>
+
 #include <getopt.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include "timer.h"
 #include "udp.h"
@@ -33,31 +37,51 @@ void print_and_exit(const int ret)
 {
   cout << "Usage: sdohdr [OPTION]..." << endl;
   cout << "  Parse udp data from file or stdin" << endl;
-  cout << "  Example: sdohdr -f file.bin -n 5" << endl;
-  cout << "  Example: sdohdr -f file.bin -t 8 -i" << endl << endl;
+  cout << "  Example: sdohdr -f file.bin" << endl;
+  cout << "  Example: sdohdr -f file.bin -t 8 -u 53234" << endl << endl;
   cout << " -h\tdisplay this help message" << endl;
   cout << " -f\tfile to read from or write to" << endl;
-  cout << " -i\tread from stdin" << endl;
-  cout << " -n\tnumber of packets to parse" << endl;
+  cout << " -u\tread from udp using PORT" << endl;
   cout << " -t\ttime to read from stdin in seconds (default 10s)" << endl;
   exit(ret);
 }
 
+int setup(const int port)
+{
+  int fd = -1;
+  sockaddr_in myaddr;
+  if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  {
+    perror("Cannot create socket\n");
+    exit(1);
+  }
+
+  myaddr.sin_family = AF_INET;
+  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  myaddr.sin_port = htons(port);
+
+  if (bind(fd, (sockaddr*)&myaddr, sizeof(myaddr)) < 0)
+  {
+    perror("Bind failed\n");
+    exit(1);
+  }
+
+  return fd;
+}
+
 int main(int argc, char *argv[])
 {
-  int n = numeric_limits<int>::max();
   double max_duration = 10.0;
-  bool use_stdin = false;
   string file_name;
+  int port = 0;
 
   int c;
-  while ((c = getopt(argc, argv, "ihf:n:t:")) != -1)
+  while ((c = getopt(argc, argv, "hu:f:t:")) != -1)
   {
     switch (c)
     {
-    case 'i': use_stdin = true; break;
+    case 'u': port = atoi(optarg); break;
     case 'f': file_name = string(optarg); break;
-    case 'n': n = atoi(optarg); break;
     case 't': max_duration = atof(optarg); break;
     case 'h': print_and_exit(EXIT_SUCCESS);
     case '?':
@@ -68,32 +92,29 @@ int main(int argc, char *argv[])
   packet_t packet;
   char *ptr = reinterpret_cast<char*>(&packet);
 
-  if (use_stdin)
+  if (port != 0)
   {
     std::vector<packet_t> buffer;
-    double start_time = timer::GetRealTime(), duration = 0.0;
     int invalid = 0;
-    size_t i;
 
+    sockaddr_in remaddr;
+    socklen_t addrlen = sizeof(remaddr);
+    int fd = setup(port);
+    size_t bytes_received = 0;
+
+    double start_time = timer::GetRealTime();
     while (true)
     {
-      i = 0;
-      while (i < sizeof(packet))
+      bytes_received = recvfrom(fd, ptr, sizeof(packet), 0, (sockaddr *)&remaddr, &addrlen);
+      if (bytes_received > 0)
       {
-        if (read(STDIN_FILENO, ptr+i, 1) > 0)
-          i++;
-        duration = timer::GetRealTime() - start_time;
-        if (duration > max_duration)
-          break;
+        if (is_valid(packet.header))
+          buffer.push_back(packet);
+        else
+          invalid++;
       }
-
-      if (duration > max_duration)
+      if (timer::GetRealTime() - start_time > max_duration)
         break;
-
-      if (is_valid(packet.header)) 
-        buffer.push_back(packet);
-      else
-        invalid++;
     }
 
     ofstream file(file_name.c_str(), ios::out|ios::binary);
@@ -114,7 +135,7 @@ int main(int argc, char *argv[])
       exit(EXIT_FAILURE);
     }
     int i = 0;
-    while (!file.eof() && i < n)
+    while (!file.eof())
     {
       file.read(ptr, sizeof(packet));
       if (!is_valid(packet.header))
