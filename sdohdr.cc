@@ -73,13 +73,12 @@ void print_and_exit(const int ret)
   cout << "Usage: sdohdr [OPTION]..." << endl;
   cout << "  Parse udp data from file or stdin" << endl;
   cout << "  Example: sdohdr -f file.bin -n 5" << endl;
-  cout << "  Example: sdohdr -f file.bin -t 8 -i" << endl;
+  cout << "  Example: sdohdr -f file.bin -t 8 -i" << endl << endl;
   cout << " -h\tdisplay this help message" << endl;
   cout << " -f\tfile to read from or write to" << endl;
   cout << " -i\tread from stdin" << endl;
   cout << " -n\tnumber of packets to parse" << endl;
   cout << " -t\ttime to read from stdin in seconds (default 10s)" << endl;
-  cout << " -h\tdisplay this help message" << endl;
   exit(ret);
 }
 
