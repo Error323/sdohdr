@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
     socklen_t addrlen = sizeof(remaddr);
     int fd = setup(port);
     size_t bytes_received = 0;
+    size_t total_bytes = 0;
 
     double start_time = timer::GetRealTime();
     while (true)
@@ -112,6 +113,7 @@ int main(int argc, char *argv[])
           buffer.push_back(packet);
         else
           invalid++;
+        total_bytes += bytes_received;
       }
       if (timer::GetRealTime() - start_time > max_duration)
         break;
@@ -124,7 +126,7 @@ int main(int argc, char *argv[])
 
     cout << "Valid   " << buffer.size() << endl;
     cout << "Invalid " << invalid << endl;
-    cout << "Total   " << (buffer.size()+invalid)*sizeof(packet) << "B" << endl;
+    cout << "Total   " << total_bytes << "B received, " << buffer.size()*sizeof(packet) << "B written" << endl;
   }
   else
   {
