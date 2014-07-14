@@ -30,7 +30,7 @@ typedef struct
 */
 typedef struct
 {
-  short data [NUM_UNI_SUBBANDS * NUM_UNI_DIPOLES * 4];
+  short data [NUM_UNI_SUBBANDS * NUM_UNI_DIPOLES * 2];
 } __attribute ((__packed__)) body_t;
 
 typedef struct
